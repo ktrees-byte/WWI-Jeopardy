@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WWI Jeopardy!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;600;700;800&family=Impact&display=swap');
+        
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .font-jeopardy { font-family: 'Impact', 'Inter', sans-serif; letter-spacing: 2px; }
+        
+        /* Glassmorphism & Visual Polish */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(234, 179, 8, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gold-border-glow {
+            box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
+        }
+
+        .tile-hover {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tile-hover:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 10px 25px -5px rgba(234, 179, 8, 0.4);
+        }
+
+        /* Perspective Flip Effect for Modal */
+        .flip-card {
+            perspective: 1000px;
+        }
+        .flip-card-inner {
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            backface-visibility: hidden;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #eab308;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950 via-slate-950 to-black text-slate-100 overflow-x-hidden selection:bg-amber-500 selection:text-black">
+
+    <header class="w-full bg-slate-900/90 border-b border-amber-500/30 px-4 py-3 flex justify-between items-center z-20 shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-700 flex items-center justify-center text-slate-950 font-black text-xl shadow-md border border-amber-300">
+                <i class="fa-solid fa-helmet-safety"></i>
+            </div>
+            <div>
+                <h1 class="font-cinzel text-xl md:text-2xl font-bold tracking-wider gold-gradient-text uppercase">WWI Jeopardy</h1>
+                <p class="text-xs text-amber-400/70 font-mono hidden sm:block">The Great War Educational Challenge (1914–1918)</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2 md:space-x-4">
+            <button id="soundToggleBtn" onclick="toggleAudio()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 text-sm transition flex items-center space-x-2">
+                <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+                <span class="hidden md:inline font-semibold">Sound</span>
+            </button>
+            <button id="resetGameBtn" onclick="confirmReset()" class="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 text-sm transition flex items-center space-x-2">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span class="hidden md:inline font-semibold">Reset</span>
+            </button>
+            <button id="finalJeopardyDirectBtn" onclick="triggerFinalJeopardyDirect()" class="hidden px-3 py-1.5 rounded-lg bg-amber-600/30 hover:bg-amber-500/50 border border-amber-500/50 text-amber-300 text-sm font-semibold transition flex items-center space-x-2">
+                <i class="fa-solid fa-trophy"></i>
+                <span class="hidden md:inline">Final Jeopardy</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col p-2 md:p-6 max-w-7xl mx-auto w-full relative">
+
+        <section id="setupScreen" class="flex-1 flex flex-col justify-center items-center py-6">
+            <div class="glass-panel p-6 md:p-10 rounded-2xl max-w-3xl w-full border border-amber-500/30 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="text-center mb-8">
+                    <span class="text-xs uppercase tracking-widest text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Classroom & Party Edition</span>
+                    <h2 class="text-3xl md:text-5xl font-extrabold font-cinzel gold-gradient-text mt-3">Game Setup</h2>
+                    <p class="text-slate-400 text-sm md:text-base mt-2">Configure teams (1 to 6) and prepare for battle across the historical fronts of World War I.</p>
+                </div>
+
+                <!-- Number of Teams Selector -->
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-amber-200 mb-3 uppercase tracking-wider text-center">Select Number of Teams</label>
+                    <div class="flex justify-center items-center space-x-2 md:space-x-4">
+                        <template id="teamCountBtnTemplate">
+                            <!-- JS populates count buttons -->
+                        </template>
+                        <div id="teamCountButtonGroup" class="flex space-x-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+                            <!-- Generated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Config Cards -->
+                <div id="teamConfigsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-h-[320px] overflow-y-auto pr-1">
+                    <!-- Dynamic team input forms populated here -->
+                </div>
+
+                <div class="flex justify-center">
+                    <button onclick="startGame()" class="w-full sm:w-auto px-10 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-slate-950 font-black text-lg tracking-wide uppercase shadow-lg shadow-amber-500/25 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center space-x-3">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Commence Game</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="gameBoardScreen" class="hidden flex-1 flex-col space-y-4">
+            
+            <!-- Category Columns Grid -->
+            <div id="jeopardyBoard" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3 flex-1">
+                <!-- Javascript will generate Category Headers and Clue Cards -->
+            </div>
+
+            <!-- Bottom Scoreboard Container -->
+            <div id="scoreboard" class="glass-panel rounded-xl p-3 md:p-4 mt-auto border border-amber-500/20 shadow-xl">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-users"></i> Active Battalions (Teams)
+                    </h3>
+                    <span class="text-xs text-slate-400">Click a team to mark active turn</span>
+                </div>
+                <div id="teamScoresGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    <!-- Dynamic Score Cards -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="questionModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 md:p-6 z-50 transition-all duration-300">
+        <div class="flip-card w-full max-w-3xl h-[85vh] max-h-[650px] relative">
+            <div id="flipCardInner" class="flip-card-inner w-full h-full relative">
+                
+                <!-- Front Side: Question/Clue -->
+                <div class="flip-card-front absolute inset-0 glass-panel rounded-2xl border-2 border-amber-500/50 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
+                    
+                    <!-- Header Bar -->
+                    <div class="flex justify-between items-center border-b border-slate-700/80 pb-3">
+                        <div>
+                            <span id="modalCategory" class="text-xs md:text-sm font-bold uppercase tracking-wider text-amber-400">CATEGORY</span>
+                            <h4 id="modalValue" class="text-2xl font-black font-jeopardy text-yellow-300">$200</h4>
+                        </div>
+                        
+                        <!-- Circular Timer -->
+                        <div class="flex items-center space-x-3">
+                            <div class="relative flex items-center justify-center">
+                                <svg class="w-12 h-12 transform -rotate-90">
+                                    <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" class="text-slate-800" fill="transparent"/>
+                                    <circle id="timerCircle" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" class="text-amber-400 transition-all duration-1000" fill="transparent" stroke-dasharray="125.6" stroke-dashoffset="0"/>
+                                </svg>
+                                <span id="timerText" class="absolute font-bold text-sm text-amber-300">30</span>
+                            </div>
+                            <button onclick="toggleTimer()" id="timerPauseBtn" class="p-2 text-slate-400 hover:text-amber-400 transition">
+                                <i class="fa-solid fa-pause"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Clue Text -->
+                    <div class="my-auto py-6 text-center px-2">
+                        <p id="clueText" class="text-xl sm:text-2xl md:text-3xl font-cinzel font-semibold leading-relaxed text-slate-100 drop-shadow">
+                            Clue text loading...
+                        </p>
+                    </div>
+
+                    <!-- Action Footer -->
+                    <div class="pt-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <span class="text-xs text-slate-400 italic">Read carefully before revealing answer</span>
+                        <button onclick="revealAnswer()" class="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-black uppercase text-sm tracking-wider shadow-lg hover:brightness-110 active:scale-95 transition">
+                            Reveal Answer <i class="fa-solid fa-eye ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Back Side: Answer & Scoring -->
+                <div class="flip-card-back absolute inset-0 glass-panel rounded-2xl border-2 border-amber-500/50 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
+                    
+                    <div class="flex justify-between items-center border-b border-slate-700/80 pb-3">
+                        <span class="text-xs md:text-sm font-bold uppercase tracking-wider text-emerald-400">Official Correct Answer</span>
+                        <span id="modalValueBack" class="text-xl font-bold text-amber-300">$200</span>
+                    </div>
+
+                    <!-- Answer Content -->
+                    <div class="my-auto py-4 text-center px-2">
+                        <p class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">What/Who is...</p>
+                        <h3 id="answerText" class="text-2xl sm:text-3xl font-bold font-cinzel text-emerald-300 drop-shadow mb-4">
+                            Answer text
+                        </h3>
+                    </div>
+
+                    <!-- Quick Scoring Buttons for Teams -->
+                    <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
+                        <p class="text-xs font-bold text-amber-400 uppercase text-center mb-2">Award / Deduct Points</p>
+                        <div id="modalTeamScoringGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1">
+                            <!-- Javascript populated team score awarding triggers -->
+                        </div>
+                    </div>
+
+                    <!-- Close Modal Button -->
+                    <div class="pt-3 border-t border-slate-800 flex justify-end">
+                        <button onclick="closeQuestionModal()" class="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold uppercase text-xs tracking-wider transition border border-amber-500/30">
+                            Return to Board <i class="fa-solid fa-xmark ml-1"></i>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="dailyDoubleModal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel p-8 rounded-2xl border-2 border-amber-400 max-w-lg w-full text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-b from-amber-500/10 to-transparent pointer-events-none"></div>
+            
+            <div class="inline-block p-4 rounded-full bg-amber-500/20 text-amber-400 text-4xl border border-amber-400/40 animate-bounce">
+                <i class="fa-solid fa-coins"></i>
+            </div>
+
+            <div>
+                <h2 class="text-3xl font-black font-jeopardy gold-gradient-text tracking-widest uppercase">Daily Double!</h2>
+                <p class="text-slate-300 text-sm mt-1">Select the wagering team and enter the wager amount.</p>
+            </div>
+
+            <!-- Team Picker -->
+            <div class="space-y-2 text-left">
+                <label class="text-xs font-bold uppercase text-amber-300">Wagering Battalion:</label>
+                <select id="ddTeamSelect" onchange="updateDDMaxWager()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-amber-200 text-sm focus:outline-none focus:border-amber-400">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <!-- Wager Input -->
+            <div class="space-y-2 text-left">
+                <div class="flex justify-between items-center text-xs">
+                    <label class="font-bold uppercase text-amber-300">Wager Amount ($):</label>
+                    <span id="ddMaxWagerLabel" class="text-slate-400">Max: $1000</span>
+                </div>
+                <input type="number" id="ddWagerInput" min="5" value="500" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-amber-300 text-xl font-bold font-jeopardy text-center focus:outline-none focus:border-amber-400">
+            </div>
+
+            <button onclick="confirmDailyDoubleWager()" class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black uppercase tracking-wider text-sm hover:brightness-110 transition shadow-lg">
+                Proceed to Clue <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="finalJeopardyModal" class="fixed inset-0 bg-black/95 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 md:p-8 rounded-2xl border-2 border-amber-500/60 max-w-3xl w-full text-center space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            
+            <div class="border-b border-amber-500/30 pb-4">
+                <span class="text-xs uppercase tracking-widest text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-full">Grand Finale</span>
+                <h2 class="text-3xl md:text-4xl font-extrabold font-cinzel gold-gradient-text mt-2">Final Jeopardy</h2>
+                <p id="fjCategory" class="text-lg font-bold text-slate-300 mt-1">Category: Loading...</p>
+            </div>
+
+            <!-- Step 1: Wager Phase -->
+            <div id="fjWagerPhase" class="space-y-4">
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Enter wagers for participating teams</p>
+                <div id="fjWagerList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-1">
+                    <!-- Populated dynamically -->
+                </div>
+                <button onclick="startFJQuestion()" class="px-8 py-3 bg-amber-500 text-slate-950 font-black uppercase text-sm rounded-xl hover:brightness-110 transition shadow-lg">
+                    Reveal Final Clue <i class="fa-solid fa-play ml-1"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: Clue Phase -->
+            <div id="fjCluePhase" class="hidden space-y-6">
+                <div class="p-6 bg-slate-900/80 rounded-xl border border-slate-800">
+                    <p id="fjClueText" class="text-xl md:text-2xl font-cinzel text-slate-100 leading-relaxed">
+                        Final clue text...
+                    </p>
+                </div>
+
+                <div class="flex justify-center">
+                    <button id="fjTimerBtn" onclick="startFJTimer()" class="px-6 py-2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-sm font-bold hover:bg-amber-500/30 transition">
+                        <i class="fa-solid fa-stopwatch mr-2"></i> Start 30s Thinking Music / Timer
+                    </button>
+                </div>
+
+                <button onclick="revealFJAnswer()" class="px-8 py-3 bg-emerald-500 text-slate-950 font-black uppercase text-sm rounded-xl hover:brightness-110 transition shadow-lg">
+                    Reveal Answer & Grade Wagers <i class="fa-solid fa-eye ml-1"></i>
+                </button>
+            </div>
+
+            <!-- Step 3: Grading Phase -->
+            <div id="fjGradingPhase" class="hidden space-y-6">
+                <div class="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl">
+                    <span class="text-xs uppercase text-emerald-400 font-bold">Correct Response</span>
+                    <h3 id="fjAnswerText" class="text-2xl font-bold font-cinzel text-emerald-300 mt-1">Answer</h3>
+                </div>
+
+                <div class="text-left space-y-2">
+                    <label class="text-xs font-bold text-amber-300 uppercase">Mark Responses:</label>
+                    <div id="fjGradingList" class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <button onclick="concludeGame()" class="w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black uppercase text-base rounded-xl hover:brightness-110 transition shadow-xl">
+                    Declare Winner & Finish <i class="fa-solid fa-trophy ml-1"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="winnerModal" class="fixed inset-0 bg-black/95 backdrop-blur-lg hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel p-8 md:p-10 rounded-2xl border-2 border-amber-400 max-w-xl w-full text-center space-y-6 shadow-2xl relative">
+            
+            <div class="w-20 h-20 mx-auto rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 text-4xl shadow-lg">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+
+            <div>
+                <span class="text-xs uppercase tracking-widest text-amber-400 font-bold">Victorious Battalion</span>
+                <h2 id="winnerTeamName" class="text-4xl font-extrabold font-cinzel gold-gradient-text mt-1">Team 1</h2>
+                <p id="winnerScoreText" class="text-2xl font-black font-jeopardy text-yellow-300 mt-2">$0 Points</p>
+            </div>
+
+            <div id="finalStandingsContainer" class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 text-left space-y-2 max-h-48 overflow-y-auto">
+                <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-800 pb-2">Final Standings</h4>
+                <div id="finalStandingsList" class="space-y-1 text-sm">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="location.reload()" class="flex-1 py-3 bg-amber-500 text-slate-950 font-black uppercase text-xs tracking-wider rounded-xl hover:brightness-110 transition">
+                    Play Again
+                </button>
+                <button onclick="closeWinnerModal()" class="px-6 py-3 bg-slate-800 text-slate-300 font-bold uppercase text-xs rounded-xl hover:bg-slate-700 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- AUDIO SYNTHESIZER (WEB AUDIO API) --- */
+        let audioCtx = null;
+        let isMuted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'board') {
+                // Board Reveal Chime
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'correct') {
+                // Success Fanfare
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.3);
+                });
+            } else if (type === 'wrong') {
+                // Buzzer Sound
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.setValueAtTime(110, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'dailyDouble') {
+                // Synth Arpeggio
+                const freqs = [220, 277.18, 329.63, 440, 554.37, 659.25];
+                freqs.forEach((f, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = f;
+                    gain.gain.setValueAtTime(0.1, now + i * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + i * 0.06);
+                    osc.stop(now + i * 0.06 + 0.2);
+                });
+            } else if (type === 'tick') {
+                // Clock Tick
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            }
+        }
+
+        function toggleAudio() {
+            isMuted = !isMuted;
+            const icon = document.getElementById('soundIcon');
+            if (isMuted) {
+                icon.className = 'fa-solid fa-volume-xmark text-red-400';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-amber-400';
+                playSound('tick');
+            }
+        }
+
+        /* --- WWI JEOPARDY DATA CONTENT --- */
+        const gameData = [
+            {
+                category: "Causes & Alliances",
+                clues: [
+                    { value: 200, question: "The assassination of Archduke Franz Ferdinand in this city sparked World War I.", answer: "Sarajevo" },
+                    { value: 400, question: "This pre-war alliance comprised Great Britain, France, and Russia.", answer: "The Triple Entente" },
+                    { value: 600, question: "This German term refers to the unconditional support given to Austria-Hungary by Germany following the assassination.", answer: "Blank Check (Blankoscheck)" },
+                    { value: 800, question: "The expansion of European empires in Africa and Asia created friction known by this 'M' word in the M-A-I-N causes.", answer: "Imperialism" },
+                    { value: 1000, question: "This 1839 treaty bound Great Britain to protect Belgian neutrality, causing Britain to enter the war when Germany invaded.", answer: "Treaty of London" }
+                ]
+            },
+            {
+                category: "The Western Front",
+                clues: [
+                    { value: 200, question: "The line of defense and combat stretching from the Swiss border to the North Sea was known as this Front.", answer: "The Western Front" },
+                    { value: 400, question: "The dangerous area of unoccupied ground between enemy trench lines was known by this phrase.", answer: "No Man's Land" },
+                    { value: 600, question: "Germany's strategic plan for a quick victory over France by invading through Belgium was named after this general.", answer: "The Schlieffen Plan" },
+                    { value: 800, question: "This 10-month battle in 1916 became a symbol of French resistance with the phrase 'They shall not pass!'", answer: "Battle of Verdun" },
+                    { value: 1000, question: "This painful medical condition was caused by prolonged exposure of feet to damp, unsanitary, and cold trench conditions.", answer: "Trench Foot" }
+                ]
+            },
+            {
+                category: "Key Battles",
+                clues: [
+                    { value: 200, question: "The 1916 Allied offensive near this French river saw the first operational use of military tanks.", answer: "Battle of the Somme" },
+                    { value: 400, question: "This disastrous Allied amphibious campaign in 1915 aimed to control the Dardanelles strait and knock the Ottoman Empire out.", answer: "Gallipoli Campaign" },
+                    { value: 600, question: "The major 1916 naval conflict between the British Grand Fleet and the German High Seas Fleet off Denmark.", answer: "Battle of Jutland" },
+                    { value: 800, question: "In September 1914, Allied forces halted the initial German advance near Paris in this pivotal battle.", answer: "First Battle of the Marne" },
+                    { value: 1000, question: "In August 1914, Russian forces suffered a devastating defeat by German forces under Hindenburg and Ludendorff at this Eastern battle.", answer: "Battle of Tannenberg" }
+                ]
+            },
+            {
+                category: "Weapons & Tech",
+                clues: [
+                    { value: 200, question: "Germany utilized these submarine vessels (Unterseebooten) to conduct unrestricted naval warfare.", answer: "U-boats" },
+                    { value: 400, question: "First used heavily by Germany at the Second Battle of Ypres in 1915, this chemical agent caused choking and blindness.", answer: "Poison Gas (Chlorine / Mustard Gas)" },
+                    { value: 600, question: "Giant rigid German airships used for reconnaissance and bombing raids over Britain were called these.", answer: "Zeppelins" },
+                    { value: 800, question: "This mechanization innovation allowed machine guns to fire through airplane propellers without hitting the blades.", answer: "Synchronization Gear (Interrupter Gear)" },
+                    { value: 1000, question: "Developed by the British under the codename 'Water Carriers', these armored combat vehicles broke trench stalemates.", answer: "Tanks" }
+                ]
+            },
+            {
+                category: "Leaders & Figures",
+                clues: [
+                    { value: 200, question: "This German fighter pilot was World War I's top flying ace, credited with 80 aerial victories.", answer: "Manfred von Richthofen (The Red Baron)" },
+                    { value: 400, question: "This U.S. President campaigned on keeping America out of the war before asking Congress for a declaration in 1917.", answer: "Woodrow Wilson" },
+                    { value: 600, question: "General 'Black Jack' Pershing commanded this military force dispatched by the U.S. to Europe.", answer: "American Expeditionary Forces (AEF)" },
+                    { value: 800, question: "This French Prime Minister, nicknamed 'The Tiger', took a hardline stance against Germany at Paris.", answer: "Georges Clemenceau" },
+                    { value: 1000, question: "This Russian Bolshevik leader seized power in 1917 and signed a separate peace treaty with Germany.", answer: "Vladimir Lenin" }
+                ]
+            },
+            {
+                category: "Treaty & Aftermath",
+                clues: [
+                    { value: 200, question: "The fighting on the Western Front ended on the 11th hour of the 11th day of this 11th month in 1918.", answer: "November (Armistice Day)" },
+                    { value: 400, question: "The primary peace treaty ending WWI was signed in 1919 in the Hall of Mirrors at this French palace.", answer: "Versailles" },
+                    { value: 600, question: "Clause 231 of the Versailles Treaty forced Germany to accept full responsibility for causing the war, known as this clause.", answer: "War Guilt Clause" },
+                    { value: 800, question: "President Wilson proposed this international peacekeeping organization, though the U.S. Senate refused to join.", answer: "The League of Nations" },
+                    { value: 1000, question: "This 1918 treaty between Russia and the Central Powers officially withdrew Russia from World War I.", answer: "Treaty of Brest-Litovsk" }
+                ]
+            }
+        ];
+
+        const finalJeopardyData = {
+            category: "WWI Communications & Espionage",
+            question: "In January 1917, a secret telegram sent by the German Foreign Minister to Mexico proposed a military alliance, offering to help Mexico reclaim Texas, New Mexico, and Arizona.",
+            answer: "The Zimmermann Telegram"
+        };
+
+        /* --- STATE MANAGEMENT --- */
+        let teamCount = 3;
+        let teams = [];
+        let activeTeamIdx = 0;
+        let playedCluesCount = 0;
+        let totalCluesCount = 30;
+        let dailyDoubleLocation = { catIdx: 0, clueIdx: 0 };
+        
+        let currentActiveClue = null;
+        let timerInterval = null;
+        let timerSeconds = 30;
+        let isTimerRunning = false;
+
+        let fjWagers = {};
+        let fjGrading = {};
+
+        const teamAvatars = [
+            "fa-shield-halved", "fa-flag", "fa-crosshairs", 
+            "fa-anchor", "fa-plane", "fa-award"
+        ];
+
+        const presetColors = [
+            "#eab308", "#3b82f6", "#ef4444", 
+            "#10b981", "#a855f7", "#f97316"
+        ];
+
+        /* --- INITIALIZATION & SETUP --- */
+        window.onload = function() {
+            renderTeamCountButtons();
+            updateTeamConfigs();
+        };
+
+        function renderTeamCountButtons() {
+            const container = document.getElementById('teamCountButtonGroup');
+            container.innerHTML = '';
+            for (let i = 1; i <= 6; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `w-10 h-10 rounded-lg font-bold transition flex items-center justify-center ${i === teamCount ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800'}`;
+                btn.innerText = i;
+                btn.onclick = () => {
+                    teamCount = i;
+                    renderTeamCountButtons();
+                    updateTeamConfigs();
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function updateTeamConfigs() {
+            const container = document.getElementById('teamConfigsContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < teamCount; i++) {
+                const teamName = teams[i] ? teams[i].name : `Battalion ${i + 1}`;
+                const teamColor = teams[i] ? teams[i].color : presetColors[i % presetColors.length];
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex items-center space-x-3";
+                card.innerHTML = `
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-950 font-bold shadow" style="background-color: ${teamColor}; flex-shrink: 0;">
+                        <i class="fa-solid ${teamAvatars[i % teamAvatars.length]} text-lg"></i>
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        <label class="text-[10px] uppercase font-bold text-slate-400">Team ${i + 1} Name</label>
+                        <input type="text" id="teamNameInput_${i}" value="${teamName}" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-amber-200 focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-slate-400 block">Color</label>
+                        <input type="color" id="teamColorInput_${i}" value="${teamColor}" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0">
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            teams = [];
+            for (let i = 0; i < teamCount; i++) {
+                const nameInput = document.getElementById(`teamNameInput_${i}`);
+                const colorInput = document.getElementById(`teamColorInput_${i}`);
+                teams.push({
+                    id: i,
+                    name: nameInput ? nameInput.value.trim() || `Battalion ${i + 1}` : `Battalion ${i + 1}`,
+                    color: colorInput ? colorInput.value : presetColors[i],
+                    score: 0,
+                    avatar: teamAvatars[i % teamAvatars.length]
+                });
+            }
+
+            // Pick random Daily Double location
+            const randomCat = Math.floor(Math.random() * gameData.length);
+            const randomClue = Math.floor(Math.random() * 5);
+            dailyDoubleLocation = { catIdx: randomCat, clueIdx: randomClue };
+
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameBoardScreen').classList.remove('hidden');
+            document.getElementById('gameBoardScreen').classList.add('flex');
+            document.getElementById('finalJeopardyDirectBtn').classList.remove('hidden');
+
+            renderGameBoard();
+            renderScoreboard();
+            playSound('board');
+        }
+
+        /* --- GAME BOARD GENERATION --- */
+        function renderGameBoard() {
+            const board = document.getElementById('jeopardyBoard');
+            board.innerHTML = '';
+
+            gameData.forEach((catData, catIdx) => {
+                const col = document.createElement('div');
+                col.className = 'flex flex-col gap-2 md:gap-3';
+
+                // Category Header
+                const header = document.createElement('div');
+                header.className = 'h-20 sm:h-24 bg-gradient-to-b from-blue-900 to-slate-900 rounded-xl border border-amber-500/30 p-2 flex items-center justify-center text-center shadow-lg';
+                header.innerHTML = `<h3 class="font-cinzel text-xs sm:text-sm font-bold gold-gradient-text uppercase leading-snug">${catData.category}</h3>`;
+                col.appendChild(header);
+
+                // Clue Tiles
+                catData.clues.forEach((clue, clueIdx) => {
+                    const tile = document.createElement('button');
+                    tile.id = `tile_${catIdx}_${clueIdx}`;
+                    tile.className = 'tile-hover h-16 sm:h-20 bg-slate-900/90 hover:bg-blue-950/80 border border-amber-500/30 rounded-xl flex items-center justify-center font-jeopardy text-xl sm:text-2xl text-yellow-400 font-bold shadow-md transition-all active:scale-95 disabled:opacity-30 disabled:border-slate-800 disabled:bg-slate-950 disabled:shadow-none disabled:cursor-not-allowed';
+                    tile.innerHTML = `$${clue.value}`;
+                    tile.onclick = () => openClue(catIdx, clueIdx);
+                    col.appendChild(tile);
+                });
+
+                board.appendChild(col);
+            });
+        }
+
+        function renderScoreboard() {
+            const container = document.getElementById('teamScoresGrid');
+            container.innerHTML = '';
+
+            teams.forEach((t, idx) => {
+                const isActive = idx === activeTeamIdx;
+                const card = document.createElement('div');
+                card.className = `p-2.5 rounded-xl border transition cursor-pointer flex flex-col justify-between ${isActive ? 'bg-amber-500/10 border-amber-400 gold-border-glow' : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'}`;
+                card.onclick = () => {
+                    activeTeamIdx = idx;
+                    renderScoreboard();
+                };
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-1.5 min-w-0">
+                            <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${t.color}"></div>
+                            <span class="text-xs font-bold truncate ${isActive ? 'text-amber-300' : 'text-slate-300'}">${t.name}</span>
+                        </div>
+                        ${isActive ? '<span class="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded">TURN</span>' : ''}
+                    </div>
+                    <div class="mt-2 flex items-center justify-between">
+                        <span class="text-lg font-black font-jeopardy ${t.score < 0 ? 'text-red-400' : 'text-emerald-400'}">$${t.score}</span>
+                        <div class="flex space-x-1" onclick="event.stopPropagation()">
+                            <button onclick="adjustScore(${idx}, -100)" class="w-5 h-5 rounded bg-slate-800 hover:bg-red-950 hover:text-red-300 text-slate-400 text-[10px] flex items-center justify-center">-</button>
+                            <button onclick="adjustScore(${idx}, 100)" class="w-5 h-5 rounded bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-400 text-[10px] flex items-center justify-center">+</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function adjustScore(teamIdx, amount) {
+            teams[teamIdx].score += amount;
+            renderScoreboard();
+        }
+
+        /* --- CLUE & MODAL MECHANICS --- */
+        function openClue(catIdx, clueIdx) {
+            const tileBtn = document.getElementById(`tile_${catIdx}_${clueIdx}`);
+            if (tileBtn.disabled) return;
+
+            // Check Daily Double
+            if (catIdx === dailyDoubleLocation.catIdx && clueIdx === dailyDoubleLocation.clueIdx) {
+                currentActiveClue = { catIdx, clueIdx, ...gameData[catIdx].clues[clueIdx], isDailyDouble: true };
+                showDailyDoubleWagerModal();
+                return;
+            }
+
+            currentActiveClue = { catIdx, clueIdx, ...gameData[catIdx].clues[clueIdx], wager: gameData[catIdx].clues[clueIdx].value, isDailyDouble: false };
+            setupAndShowQuestionModal();
+        }
+
+        function showDailyDoubleWagerModal() {
+            playSound('dailyDouble');
+            const teamSelect = document.getElementById('ddTeamSelect');
+            teamSelect.innerHTML = '';
+            teams.forEach((t, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = `${t.name} (Score: $${t.score})`;
+                if (idx === activeTeamIdx) opt.selected = true;
+                teamSelect.appendChild(opt);
+            });
+
+            updateDDMaxWager();
+            document.getElementById('dailyDoubleModal').classList.remove('hidden');
+            document.getElementById('dailyDoubleModal').classList.add('flex');
+        }
+
+        function updateDDMaxWager() {
+            const teamIdx = parseInt(document.getElementById('ddTeamSelect').value) || 0;
+            const currentScore = teams[teamIdx].score;
+            const maxWager = Math.max(1000, currentScore);
+            document.getElementById('ddMaxWagerLabel').innerText = `Max Wager: $${maxWager}`;
+            const input = document.getElementById('ddWagerInput');
+            input.max = maxWager;
+            input.value = Math.min(500, maxWager);
+        }
+
+        function confirmDailyDoubleWager() {
+            const teamIdx = parseInt(document.getElementById('ddTeamSelect').value) || 0;
+            const wagerInput = parseInt(document.getElementById('ddWagerInput').value) || 500;
+            const maxWager = Math.max(1000, teams[teamIdx].score);
+
+            const finalWager = Math.min(Math.max(5, wagerInput), maxWager);
+            activeTeamIdx = teamIdx;
+            currentActiveClue.wager = finalWager;
+
+            document.getElementById('dailyDoubleModal').classList.add('hidden');
+            document.getElementById('dailyDoubleModal').classList.remove('flex');
+            setupAndShowQuestionModal();
+        }
+
+        function setupAndShowQuestionModal() {
+            const clue = currentActiveClue;
+            document.getElementById('modalCategory').innerText = gameData[clue.catIdx].category + (clue.isDailyDouble ? " (DAILY DOUBLE)" : "");
+            document.getElementById('modalValue').innerText = `$${clue.wager}`;
+            document.getElementById('modalValueBack').innerText = `$${clue.wager}`;
+            document.getElementById('clueText').innerText = clue.question;
+            document.getElementById('answerText').innerText = clue.answer;
+
+            // Flip back to question side
+            document.getElementById('flipCardInner').parentElement.classList.remove('flipped');
+
+            // Render team scoring grid inside modal
+            renderModalScoringGrid();
+
+            // Reset Timer
+            resetTimer();
+
+            const modal = document.getElementById('questionModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            startTimer();
+        }
+
+        function renderModalScoringGrid() {
+            const container = document.getElementById('modalTeamScoringGrid');
+            container.innerHTML = '';
+
+            teams.forEach((t, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between text-xs";
+                card.innerHTML = `
+                    <span class="font-bold truncate max-w-[90px]" style="color: ${t.color}">${t.name}</span>
+                    <div class="flex space-x-1">
+                        <button onclick="awardCluePoints(${idx}, false)" class="px-2 py-1 bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold rounded">
+                            -$${currentActiveClue.wager}
+                        </button>
+                        <button onclick="awardCluePoints(${idx}, true)" class="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 font-bold rounded">
+                            +$${currentActiveClue.wager}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function revealAnswer() {
+            pauseTimer();
+            playSound('board');
+            document.getElementById('flipCardInner').parentElement.classList.add('flipped');
+        }
+
+        function awardCluePoints(teamIdx, isCorrect) {
+            const wager = currentActiveClue.wager;
+            if (isCorrect) {
+                teams[teamIdx].score += wager;
+                playSound('correct');
+            } else {
+                teams[teamIdx].score -= wager;
+                playSound('wrong');
+            }
+            renderScoreboard();
+            renderModalScoringGrid();
+        }
+
+        function closeQuestionModal() {
+            pauseTimer();
+            // Mark tile as played
+            const tileBtn = document.getElementById(`tile_${currentActiveClue.catIdx}_${currentActiveClue.clueIdx}`);
+            if (tileBtn && !tileBtn.disabled) {
+                tileBtn.disabled = true;
+                tileBtn.innerHTML = '<i class="fa-solid fa-check text-slate-700 text-sm"></i>';
+                playedCluesCount++;
+            }
+
+            document.getElementById('questionModal').classList.add('hidden');
+            document.getElementById('questionModal').classList.remove('flex');
+
+            // Auto trigger Final Jeopardy if board complete
+            if (playedCluesCount >= totalCluesCount) {
+                setTimeout(() => {
+                    triggerFinalJeopardy();
+                }, 500);
+            }
+        }
+
+        /* --- TIMER MECHANICS --- */
+        function startTimer() {
+            if (isTimerRunning) return;
+            isTimerRunning = true;
+            document.getElementById('timerPauseBtn').innerHTML = '<i class="fa-solid fa-pause"></i>';
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerUI();
+                if (timerSeconds <= 5 && timerSeconds > 0) {
+                    playSound('tick');
+                }
+                if (timerSeconds <= 0) {
+                    pauseTimer();
+                    playSound('wrong');
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('timerPauseBtn').innerHTML = '<i class="fa-solid fa-play"></i>';
+        }
+
+        function toggleTimer() {
+            if (isTimerRunning) pauseTimer();
+            else startTimer();
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            timerSeconds = 30;
+            updateTimerUI();
+        }
+
+        function updateTimerUI() {
+            document.getElementById('timerText').innerText = timerSeconds;
+            const circle = document.getElementById('timerCircle');
+            const totalDash = 125.6;
+            const offset = totalDash - (timerSeconds / 30) * totalDash;
+            circle.style.strokeDashoffset = offset;
+        }
+
+        /* --- FINAL JEOPARDY ROUND --- */
+        function triggerFinalJeopardyDirect() {
+            if (confirm("Proceed directly to Final Jeopardy?")) {
+                triggerFinalJeopardy();
+            }
+        }
+
+        function triggerFinalJeopardy() {
+            document.getElementById('fjCategory').innerText = `Category: ${finalJeopardyData.category}`;
+            
+            // Build Wager List
+            const wagerList = document.getElementById('fjWagerList');
+            wagerList.innerHTML = '';
+            fjWagers = {};
+
+            teams.forEach((t, idx) => {
+                fjWagers[idx] = 0;
+                const maxWager = Math.max(0, t.score);
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-between";
+                card.innerHTML = `
+                    <div class="text-left">
+                        <span class="font-bold text-xs" style="color:${t.color}">${t.name}</span>
+                        <p class="text-[10px] text-slate-400">Current: $${t.score}</p>
+                    </div>
+                    <div class="w-32">
+                        <input type="number" min="0" max="${maxWager}" value="${Math.min(100, maxWager)}" onchange="fjWagers[${idx}] = parseInt(this.value)|0" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-amber-300 font-bold text-center">
+                    </div>
+                `;
+                wagerList.appendChild(card);
+                fjWagers[idx] = Math.min(100, maxWager);
+            });
+
+            document.getElementById('fjWagerPhase').classList.remove('hidden');
+            document.getElementById('fjCluePhase').classList.add('hidden');
+            document.getElementById('fjGradingPhase').classList.add('hidden');
+
+            const modal = document.getElementById('finalJeopardyModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function startFJQuestion() {
+            document.getElementById('fjWagerPhase').classList.add('hidden');
+            document.getElementById('fjCluePhase').classList.remove('hidden');
+            document.getElementById('fjClueText').innerText = finalJeopardyData.question;
+        }
+
+        function startFJTimer() {
+            playSound('dailyDouble');
+            let count = 30;
+            const btn = document.getElementById('fjTimerBtn');
+            btn.disabled = true;
+            const interval = setInterval(() => {
+                count--;
+                btn.innerHTML = `<i class="fa-solid fa-clock"></i> Thinking Time: ${count}s`;
+                if (count % 2 === 0) playSound('tick');
+                if (count <= 0) {
+                    clearInterval(interval);
+                    playSound('wrong');
+                    btn.innerHTML = `<i class="fa-solid fa-hourglass-end"></i> Time's Up!`;
+                }
+            }, 1000);
+        }
+
+        function revealFJAnswer() {
+            document.getElementById('fjCluePhase').classList.add('hidden');
+            document.getElementById('fjGradingPhase').classList.remove('hidden');
+            document.getElementById('fjAnswerText').innerText = finalJeopardyData.answer;
+
+            const gradingList = document.getElementById('fjGradingList');
+            gradingList.innerHTML = '';
+            fjGrading = {};
+
+            teams.forEach((t, idx) => {
+                fjGrading[idx] = true; // default correct
+                const wager = fjWagers[idx] || 0;
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between text-xs";
+                card.innerHTML = `
+                    <div>
+                        <span class="font-bold" style="color:${t.color}">${t.name}</span>
+                        <span class="text-slate-400 ml-2">(Wager: $${wager})</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="fjGradingBtn_incorrect_${idx}" onclick="setFJGrading(${idx}, false)" class="px-3 py-1 bg-slate-800 text-slate-400 font-bold rounded">Incorrect</button>
+                        <button id="fjGradingBtn_correct_${idx}" onclick="setFJGrading(${idx}, true)" class="px-3 py-1 bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold rounded">Correct</button>
+                    </div>
+                `;
+                gradingList.appendChild(card);
+            });
+        }
+
+        function setFJGrading(teamIdx, isCorrect) {
+            fjGrading[teamIdx] = isCorrect;
+            const correctBtn = document.getElementById(`fjGradingBtn_correct_${teamIdx}`);
+            const incorrectBtn = document.getElementById(`fjGradingBtn_incorrect_${teamIdx}`);
+
+            if (isCorrect) {
+                correctBtn.className = "px-3 py-1 bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold rounded";
+                incorrectBtn.className = "px-3 py-1 bg-slate-800 text-slate-400 font-bold rounded";
+            } else {
+                correctBtn.className = "px-3 py-1 bg-slate-800 text-slate-400 font-bold rounded";
+                incorrectBtn.className = "px-3 py-1 bg-red-950 text-red-300 border border-red-500/40 font-bold rounded";
+            }
+        }
+
+        function concludeGame() {
+            // Apply Final Wagers
+            teams.forEach((t, idx) => {
+                const wager = fjWagers[idx] || 0;
+                if (fjGrading[idx]) {
+                    t.score += wager;
+                } else {
+                    t.score -= wager;
+                }
+            });
+
+            document.getElementById('finalJeopardyModal').classList.add('hidden');
+            document.getElementById('finalJeopardyModal').classList.remove('flex');
+
+            showWinnerModal();
+        }
+
+        function showWinnerModal() {
+            // Sort teams by highest score
+            const sorted = [...teams].sort((a, b) => b.score - a.score);
+            const winner = sorted[0];
+
+            document.getElementById('winnerTeamName').innerText = winner.name;
+            document.getElementById('winnerTeamName').style.color = winner.color;
+            document.getElementById('winnerScoreText').innerText = `$${winner.score} Points`;
+
+            const standingsList = document.getElementById('finalStandingsList');
+            standingsList.innerHTML = '';
+            sorted.forEach((t, rank) => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center py-1 border-b border-slate-800/50 last:border-0";
+                row.innerHTML = `
+                    <span class="font-semibold text-slate-300">#${rank + 1} ${t.name}</span>
+                    <span class="font-jeopardy text-amber-300 font-bold">$${t.score}</span>
+                `;
+                standingsList.appendChild(row);
+            });
+
+            document.getElementById('winnerModal').classList.remove('hidden');
+            document.getElementById('winnerModal').classList.add('flex');
+
+            // Trigger Confetti
+            playSound('correct');
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function closeWinnerModal() {
+            document.getElementById('winnerModal').classList.add('hidden');
+            document.getElementById('winnerModal').classList.remove('flex');
+            renderScoreboard();
+        }
+
+        function confirmReset() {
+            if (confirm("Are you sure you want to reset the current game? All progress will be lost.")) {
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
