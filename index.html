@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Great War Dispatch Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    /* --- Default (light / "day shift, operations tent") theme --- */
+    --paper: #ece3c8;
+    --paper-2: #e2d6b3;
+    --card: #f4ecd6;
+    --ink: #241f16;
+    --ink-soft: #4a4130;
+    --line: #b8a877;
+    --brass: #8f6a2e;
+    --brass-bright: #b98a3c;
+    --olive: #3f4a34;
+    --olive-deep: #2c3524;
+    --olive-2: #566246;
+    --alert: #7c2b23;
+    --alert-bright: #a53a2c;
+    --ok: #3d5a34;
+    --shadow: rgba(36, 31, 22, 0.35);
+    --stamp: #7c2b23;
+  }
+
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+  * { box-sizing: border-box; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      /* --- Night blackout / "war room lamp" theme --- */
+      --paper: #201d16;
+      --paper-2: #171410;
+      --card: #2a2519;
+      --ink: #e9dfc4;
+      --ink-soft: #c3b791;
+      --line: #5b5136;
+      --brass: #c9a256;
+      --brass-bright: #e0b968;
+      --olive: #8ea377;
+      --olive-deep: #5c6b48;
+      --olive-2: #46523a;
+      --alert: #d1685a;
+      --alert-bright: #e78878;
+      --ok: #8fb478;
+      --shadow: rgba(0, 0, 0, 0.6);
+      --stamp: #d1685a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #201d16;
+    --paper-2: #171410;
+    --card: #2a2519;
+    --ink: #e9dfc4;
+    --ink-soft: #c3b791;
+    --line: #5b5136;
+    --brass: #c9a256;
+    --brass-bright: #e0b968;
+    --olive: #8ea377;
+    --olive-deep: #5c6b48;
+    --olive-2: #46523a;
+    --alert: #d1685a;
+    --alert-bright: #e78878;
+    --ok: #8fb478;
+    --shadow: rgba(0, 0, 0, 0.6);
+    --stamp: #d1685a;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    background:
+      radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--paper-2) 60%, transparent), transparent 55%),
+      var(--paper);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, 'Times New Roman', serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stencil {
+    font-family: 'Special Elite', 'Courier New', monospace;
+    letter-spacing: 0.03em;
+  }
+
+  #app {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    border: 2px solid var(--ink-soft);
+    border-radius: 2px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+  }
+  .masthead h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 1rem + 1.6vw, 2rem);
+    line-height: 1.15;
+  }
+  .masthead .kicker {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--brass);
+    margin-bottom: 4px;
+  }
+  .masthead .meta {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    text-align: right;
+    line-height: 1.5;
+  }
+  #resetBtn {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.72rem;
+    background: none;
+    border: 1px solid var(--ink-soft);
+    color: var(--ink-soft);
+    padding: 6px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  #resetBtn:hover { border-color: var(--alert); color: var(--alert); }
+
+  /* ---------- Setup screen ---------- */
+  .setup-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 28px clamp(16px, 4vw, 40px);
+    box-shadow: 0 10px 30px -12px var(--shadow);
+  }
+  .setup-card h2 {
+    margin-top: 0;
+    font-size: 1.15rem;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 10px;
+  }
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0;
+    flex-wrap: wrap;
+  }
+  .field-row > label { font-size: 0.9rem; color: var(--ink-soft); min-width: 140px; }
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .stepper button {
+    background: var(--olive);
+    color: #f4ecd6;
+    border: none;
+    width: 34px;
+    height: 34px;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .stepper button:hover { background: var(--olive-deep); }
+  .stepper span {
+    display: inline-block;
+    min-width: 40px;
+    text-align: center;
+    font-family: 'Special Elite', monospace;
+    font-size: 1rem;
+  }
+  .team-name-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 16px 0 22px;
+  }
+  .team-name-grid input {
+    width: 100%;
+    font-family: 'Spectral', serif;
+    font-size: 0.95rem;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .team-name-grid input:focus-visible, button:focus-visible, .cell:focus-visible {
+    outline: 2px solid var(--brass-bright);
+    outline-offset: 2px;
+  }
+  .start-btn {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.95rem;
+    background: var(--alert);
+    color: #f4ecd6;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+  }
+  .start-btn:hover { background: var(--alert-bright); }
+  .setup-note { font-size: 0.78rem; color: var(--ink-soft); margin-top: 10px; }
+
+  /* ---------- Scoreboard ---------- */
+  #scoreboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .team-chip {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 8px 10px;
+    background: var(--card);
+    position: relative;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .team-chip.active {
+    border-color: var(--brass);
+    box-shadow: 0 0 0 1px var(--brass);
+  }
+  .team-chip.active::before {
+    content: "ON THE CLOCK";
+    position: absolute;
+    top: -9px;
+    left: 8px;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.55rem;
+    background: var(--brass);
+    color: var(--olive-deep);
+    padding: 1px 5px;
+    border-radius: 1px;
+  }
+  .team-chip .name {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .team-chip .score {
+    font-family: 'Special Elite', monospace;
+    font-size: 1.2rem;
+    margin-top: 2px;
+  }
+  .team-chip .score.neg { color: var(--alert); }
+
+  /* ---------- Board ---------- */
+  #board {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    border: 2px solid var(--olive-deep);
+    padding: 6px;
+    border-radius: 3px;
+    background: var(--olive-deep);
+  }
+  .cat-head {
+    background: var(--olive);
+    color: #f4ecd6;
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(0.6rem, 0.45rem + 0.5vw, 0.82rem);
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 2px;
+    line-height: 1.25;
+    min-height: 3.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cell {
+    background: var(--card);
+    color: var(--brass);
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(0.95rem, 0.8rem + 0.8vw, 1.4rem);
+    border: none;
+    border-radius: 2px;
+    padding: 16px 4px;
+    cursor: pointer;
+    aspect-ratio: 3 / 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, transform 0.08s;
+  }
+  .cell:hover { background: var(--paper-2); transform: translateY(-1px); }
+  .cell:disabled {
+    background: color-mix(in srgb, var(--olive-deep) 30%, var(--card));
+    color: var(--olive-2);
+    cursor: default;
+    transform: none;
+  }
+  .cell:disabled::after { content: "✕"; font-size: 0.9rem; }
+
+  /* ---------- Modal ---------- */
+  #modalWrap {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, var(--ink) 55%, transparent);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 50;
+  }
+  #modalWrap.open { display: flex; }
+  .modal {
+    width: min(720px, 100%);
+    max-height: min(84vh, 720px);
+    overflow-y: auto;
+    background: var(--card);
+    border: 2px solid var(--brass);
+    border-radius: 4px;
+    padding: clamp(20px, 4vw, 40px);
+    box-shadow: 0 20px 60px -10px var(--shadow);
+    position: relative;
+  }
+  .modal .cat-tag {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.72rem;
+    color: var(--brass);
+    margin-bottom: 10px;
+  }
+  .modal .clue-text {
+    font-size: clamp(1.1rem, 1rem + 0.9vw, 1.55rem);
+    line-height: 1.45;
+    margin: 0 0 22px;
+  }
+  .modal .answer-text {
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(1rem, 0.9rem + 0.6vw, 1.3rem);
+    color: var(--ok);
+    border-top: 1px dashed var(--line);
+    padding-top: 16px;
+    margin: 0 0 22px;
+  }
+  .dd-banner {
+    font-family: 'Special Elite', monospace;
+    color: var(--stamp);
+    border: 2px solid var(--stamp);
+    display: inline-block;
+    padding: 4px 12px;
+    transform: rotate(-3deg);
+    border-radius: 2px;
+    margin-bottom: 14px;
+    font-size: 1rem;
+  }
+  .reveal-btn, .wager-confirm {
+    font-family: 'Special Elite', monospace;
+    background: var(--olive);
+    color: #f4ecd6;
+    border: none;
+    padding: 11px 18px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .reveal-btn:hover, .wager-confirm:hover { background: var(--olive-deep); }
+  .team-award-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .award-btn {
+    font-family: 'Spectral', serif;
+    font-size: 0.85rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 9px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .award-btn:hover { border-color: var(--ok); color: var(--ok); }
+  .award-btn.wrong-variant:hover { border-color: var(--alert); color: var(--alert); }
+  .no-one-btn {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.72rem;
+    background: none;
+    border: 1px dashed var(--ink-soft);
+    color: var(--ink-soft);
+    padding: 8px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-top: 12px;
+    width: 100%;
+  }
+  .no-one-btn:hover { border-color: var(--alert); color: var(--alert); }
+  .wager-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
+  .wager-row input {
+    width: 110px;
+    font-family: 'Special Elite', monospace;
+    font-size: 1rem;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .section-label { font-size: 0.72rem; color: var(--ink-soft); margin: 4px 0 8px; }
+
+  /* ---------- Final screen ---------- */
+  .final-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 28px clamp(16px, 4vw, 40px);
+    text-align: center;
+  }
+  .final-card h2 { margin-top: 0; }
+  .final-list { list-style: none; padding: 0; margin: 20px 0; }
+  .final-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px dashed var(--line);
+    font-size: 1rem;
+  }
+  .final-list li.winner {
+    background: color-mix(in srgb, var(--brass) 18%, transparent);
+    font-weight: 700;
+    border-radius: 2px;
+  }
+  .final-list .rank { font-family: 'Special Elite', monospace; color: var(--brass); margin-right: 10px; }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 720px) {
+    #board { grid-template-columns: repeat(3, 1fr); }
+    .cell { aspect-ratio: 2 / 1.1; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="masthead">
+    <div>
+      <span class="kicker stencil">WAR DEPARTMENT · TRIVIA DIVISION</span>
+      <h1 class="stencil">The Great War Dispatch Board</h1>
+    </div>
+    <div class="meta">
+      <span id="cluesLeftMeta">30 clues remaining</span><br>
+      <button id="resetBtn" class="hidden">↺ New Operation</button>
+    </div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="setupScreen" class="setup-card">
+    <h2 class="stencil">Muster the Teams</h2>
+    <div class="field-row">
+      <label>Number of teams</label>
+      <div class="stepper">
+        <button id="teamMinus" type="button">−</button>
+        <span id="teamCount">3</span>
+        <button id="teamPlus" type="button">+</button>
+      </div>
+      <span class="setup-note">(1–6 teams)</span>
+    </div>
+    <div class="team-name-grid" id="teamNameGrid"></div>
+    <button class="start-btn" id="startBtn">Deploy to the Board</button>
+    <p class="setup-note">Six categories, five clues each — two hidden Daily Doubles are planted in the field. Whichever team answers correctly picks the next clue.</p>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameScreen" class="hidden">
+    <div id="scoreboard"></div>
+    <div id="board"></div>
+  </div>
+
+  <!-- FINAL SCREEN -->
+  <div id="finalScreen" class="hidden final-card">
+    <span class="kicker stencil" style="color:var(--brass)">CASE FILE CLOSED</span>
+    <h2 class="stencil">Final Report</h2>
+    <ul class="final-list" id="finalList"></ul>
+    <button class="start-btn" id="playAgainBtn">Muster a New Operation</button>
+  </div>
+
+</div>
+
+<!-- CLUE MODAL -->
+<div id="modalWrap">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATEGORIES = [
+    {
+      name: "Causes & Outbreak",
+      clues: [
+        { value: 100, clue: "The assassination of this Archduke in Sarajevo in June 1914 set off the July Crisis.", answer: "Who is Archduke Franz Ferdinand?" },
+        { value: 200, clue: "This pre-war pact bound Germany, Austria-Hungary, and Italy together.", answer: "What is the Triple Alliance?" },
+        { value: 300, clue: "This German war plan aimed to knock France out quickly by invading through Belgium before turning on Russia.", answer: "What is the Schlieffen Plan?" },
+        { value: 400, clue: "This tangled web of secret defense pacts meant a regional Balkan dispute could drag in most of Europe.", answer: "What is the alliance system?" },
+        { value: 500, clue: "Historians call the tense weeks of ultimatums and mobilization following the assassination this kind of \"crisis.\"", answer: "What is the July Crisis?" }
+      ]
+    },
+    {
+      name: "Fronts & Battles",
+      clues: [
+        { value: 100, clue: "This style of fighting, defined by opposing lines of dugouts and barbed wire, dominated the Western Front.", answer: "What is trench warfare?" },
+        { value: 200, clue: "This grinding 1916 battle near a fortress city became a symbol of France's will to hold the line.", answer: "What is the Battle of Verdun?" },
+        { value: 300, clue: "On its first day in July 1916, the British army suffered roughly 57,000 casualties at this Somme-side battle.", answer: "What is the Battle of the Somme?" },
+        { value: 400, clue: "This roughly 400-mile band of trenches ran from the North Sea to the Swiss border.", answer: "What is the Western Front?" },
+        { value: 500, clue: "This failed 1915 Allied campaign tried to force open a sea route to Russia through a narrow Turkish strait.", answer: "What is the Gallipoli Campaign?" }
+      ]
+    },
+    {
+      name: "Weapons & Tech",
+      clues: [
+        { value: 100, clue: "Fired from a fixed, rapid-cycling position, this weapon could mow down entire waves of advancing troops.", answer: "What is the machine gun?" },
+        { value: 200, clue: "First unleashed by Germany near Ypres in 1915, chlorine and later mustard were common forms of this weapon.", answer: "What is poison gas?" },
+        { value: 300, clue: "Nicknamed for a water container to disguise its purpose, this armored vehicle made its debut at the Somme in 1916.", answer: "What is the tank?" },
+        { value: 400, clue: "Germany used this class of vessel for unrestricted attacks on merchant shipping, including the Lusitania.", answer: "What is the U-boat (submarine)?" },
+        { value: 500, clue: "Pilots in flimsy biplanes pioneered this new, deadly form of combat fought high above the trenches.", answer: "What is aerial dogfighting?" }
+      ]
+    },
+    {
+      name: "Leaders & Figures",
+      clues: [
+        { value: 100, clue: "This French general, later known as \"The Lion of Verdun,\" would go on to lead the collaborationist Vichy regime in WWII.", answer: "Who is Philippe Pétain?" },
+        { value: 200, clue: "This German monarch led his empire into war in 1914 and abdicated in November 1918.", answer: "Who is Kaiser Wilhelm II?" },
+        { value: 300, clue: "This American president brought the U.S. into the war in 1917 and later proposed a Fourteen Points peace plan.", answer: "Who is Woodrow Wilson?" },
+        { value: 400, clue: "This British field marshal commanded the BEF for most of the war and oversaw the Somme offensive.", answer: "Who is Douglas Haig?" },
+        { value: 500, clue: "This Bolshevik revolutionary pulled Russia out of the war after seizing power in 1917.", answer: "Who is Vladimir Lenin?" }
+      ]
+    },
+    {
+      name: "Home Front",
+      clues: [
+        { value: 100, clue: "Many warring nations introduced this compulsory enlistment policy to keep the ranks filled.", answer: "What is conscription (the draft)?" },
+        { value: 200, clue: "With men away fighting, many women took on this kind of hazardous factory work, producing shells and cartridges.", answer: "What is munitions work?" },
+        { value: 300, clue: "Governments leaned heavily on this kind of persuasive material, especially posters, to boost enlistment and morale.", answer: "What is propaganda?" },
+        { value: 400, clue: "A brutal food shortage struck Germany especially hard in the winter of 1916–17, remembered by this bleak vegetable nickname.", answer: "What is the \"Turnip Winter\"?" },
+        { value: 500, clue: "This global influenza pandemic, misleadingly named after a neutral country, killed more people than the war itself.", answer: "What is the Spanish Flu?" }
+      ]
+    },
+    {
+      name: "Aftermath & Legacy",
+      clues: [
+        { value: 100, clue: "This 1919 treaty, signed in a French palace's Hall of Mirrors, formally ended the war with Germany.", answer: "What is the Treaty of Versailles?" },
+        { value: 200, clue: "This clause of the peace settlement forced Germany to accept sole responsibility for causing the war.", answer: "What is the War Guilt Clause?" },
+        { value: 300, clue: "Founded after the war to prevent future conflicts, this body was a forerunner of the United Nations.", answer: "What is the League of Nations?" },
+        { value: 400, clue: "The war's end unraveled this centuries-old empire, reshaping the borders of the modern Middle East.", answer: "What is the Ottoman Empire?" },
+        { value: 500, clue: "Harsh treaty terms and economic collapse in postwar Germany are often cited as fuel for the 1930s rise of this movement.", answer: "What is Nazism (the Nazi Party)?" }
+      ]
+    }
+  ];
+
+  var state = {
+    teams: [],
+    activeTeam: 0,
+    cluesTotal: 0,
+    cluesDone: 0,
+    dailyDoubles: [],
+    current: null // {catIdx, clueIdx, revealed, isDD, wager}
+  };
+
+  var teamCount = 3;
+  var MAX_TEAMS = 6, MIN_TEAMS = 1;
+
+  var teamCountEl = document.getElementById('teamCount');
+  var teamNameGrid = document.getElementById('teamNameGrid');
+  var setupScreen = document.getElementById('setupScreen');
+  var gameScreen = document.getElementById('gameScreen');
+  var finalScreen = document.getElementById('finalScreen');
+  var scoreboardEl = document.getElementById('scoreboard');
+  var boardEl = document.getElementById('board');
+  var modalWrap = document.getElementById('modalWrap');
+  var modalBody = document.getElementById('modalBody');
+  var resetBtn = document.getElementById('resetBtn');
+  var cluesLeftMeta = document.getElementById('cluesLeftMeta');
+
+  function renderTeamNameInputs() {
+    teamNameGrid.innerHTML = '';
+    for (var i = 0; i < teamCount; i++) {
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 24;
+      input.placeholder = 'Team ' + (i + 1) + ' name';
+      input.id = 'teamNameInput' + i;
+      teamNameGrid.appendChild(input);
+    }
+  }
+
+  document.getElementById('teamMinus').addEventListener('click', function () {
+    if (teamCount > MIN_TEAMS) { teamCount--; teamCountEl.textContent = teamCount; renderTeamNameInputs(); }
+  });
+  document.getElementById('teamPlus').addEventListener('click', function () {
+    if (teamCount < MAX_TEAMS) { teamCount++; teamCountEl.textContent = teamCount; renderTeamNameInputs(); }
+  });
+  renderTeamNameInputs();
+
+  document.getElementById('startBtn').addEventListener('click', function () {
+    var teams = [];
+    for (var i = 0; i < teamCount; i++) {
+      var el = document.getElementById('teamNameInput' + i);
+      var name = (el.value || '').trim() || ('Team ' + (i + 1));
+      teams.push({ name: name, score: 0 });
+    }
+    startGame(teams);
+  });
+
+  document.getElementById('playAgainBtn').addEventListener('click', function () {
+    finalScreen.classList.add('hidden');
+    resetBtn.classList.add('hidden');
+    setupScreen.classList.remove('hidden');
+  });
+
+  resetBtn.addEventListener('click', function () {
+    if (confirm('End this operation and start a new one? Current scores will be lost.')) {
+      gameScreen.classList.add('hidden');
+      resetBtn.classList.add('hidden');
+      setupScreen.classList.remove('hidden');
+    }
+  });
+
+  function pickDailyDoubles() {
+    var pool = [];
+    CATEGORIES.forEach(function (cat, ci) {
+      cat.clues.forEach(function (clue, qi) {
+        if (clue.value >= 200) pool.push(ci + '-' + qi);
+      });
+    });
+    var chosen = [];
+    while (chosen.length < 2 && pool.length) {
+      var idx = Math.floor(Math.random() * pool.length);
+      chosen.push(pool.splice(idx, 1)[0]);
+    }
+    return chosen;
+  }
+
+  function startGame(teams) {
+    state.teams = teams;
+    state.activeTeam = 0;
+    state.cluesTotal = CATEGORIES.length * CATEGORIES[0].clues.length;
+    state.cluesDone = 0;
+    state.dailyDoubles = pickDailyDoubles();
+
+    setupScreen.classList.add('hidden');
+    finalScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    resetBtn.classList.remove('hidden');
+
+    renderScoreboard();
+    renderBoard();
+    updateCluesMeta();
+  }
+
+  function updateCluesMeta() {
+    var left = state.cluesTotal - state.cluesDone;
+    cluesLeftMeta.textContent = left + ' clue' + (left === 1 ? '' : 's') + ' remaining';
+  }
+
+  function renderScoreboard() {
+    scoreboardEl.innerHTML = '';
+    state.teams.forEach(function (team, idx) {
+      var chip = document.createElement('div');
+      chip.className = 'team-chip' + (idx === state.activeTeam ? ' active' : '');
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'name';
+      nameDiv.textContent = team.name;
+      var scoreDiv = document.createElement('div');
+      scoreDiv.className = 'score stencil' + (team.score < 0 ? ' neg' : '');
+      scoreDiv.textContent = (team.score < 0 ? '-$' : '$') + Math.abs(team.score);
+      chip.appendChild(nameDiv);
+      chip.appendChild(scoreDiv);
+      scoreboardEl.appendChild(chip);
+    });
+  }
+
+  function renderBoard() {
+    boardEl.innerHTML = '';
+    CATEGORIES.forEach(function (cat) {
+      var head = document.createElement('div');
+      head.className = 'cat-head';
+      head.textContent = cat.name;
+      boardEl.appendChild(head);
+    });
+    var rows = CATEGORIES[0].clues.length;
+    for (var r = 0; r < rows; r++) {
+      CATEGORIES.forEach(function (cat, ci) {
+        var clue = cat.clues[r];
+        var btn = document.createElement('button');
+        btn.className = 'cell stencil';
+        btn.textContent = '$' + clue.value;
+        btn.disabled = !!clue._done;
+        btn.addEventListener('click', function () { openClue(ci, r); });
+        boardEl.appendChild(btn);
+      });
+    }
+  }
+
+  function openClue(catIdx, clueIdx) {
+    var clue = CATEGORIES[catIdx].clues[clueIdx];
+    if (clue._done) return;
+    var isDD = state.dailyDoubles.indexOf(catIdx + '-' + clueIdx) !== -1;
+    state.current = { catIdx: catIdx, clueIdx: clueIdx, isDD: isDD, wager: clue.value, revealed: false };
+    modalWrap.classList.add('open');
+    if (isDD) {
+      renderDailyDoubleWager();
+    } else {
+      renderClueFront();
+    }
+  }
+
+  function currentClue() {
+    return CATEGORIES[state.current.catIdx].clues[state.current.clueIdx];
+  }
+
+  function maxWager() {
+    var team = state.teams[state.activeTeam];
+    var boardMax = 500;
+    return Math.max(team.score, boardMax);
+  }
+
+  function renderDailyDoubleWager() {
+    var team = state.teams[state.activeTeam];
+    var clue = currentClue();
+    modalBody.innerHTML =
+      '<div class="cat-tag stencil">' + escapeHtml(CATEGORIES[state.current.catIdx].name) + '</div>' +
+      '<div class="dd-banner stencil">DAILY DOUBLE</div>' +
+      '<p>' + escapeHtml(team.name) + ' is on the clock. Enter a wager (up to $' + maxWager() + ').</p>' +
+      '<div class="wager-row">' +
+        '<input type="number" id="wagerInput" min="0" max="' + maxWager() + '" value="' + clue.value + '">' +
+        '<button class="wager-confirm stencil" id="wagerConfirm">Lock In Wager</button>' +
+      '</div>';
+    document.getElementById('wagerConfirm').addEventListener('click', function () {
+      var val = parseInt(document.getElementById('wagerInput').value, 10);
+      if (isNaN(val) || val < 0) val = 0;
+      if (val > maxWager()) val = maxWager();
+      state.current.wager = val;
+      renderClueFront();
+    });
+  }
+
+  function renderClueFront() {
+    var clue = currentClue();
+    var isDD = state.current.isDD;
+    modalBody.innerHTML =
+      '<div class="cat-tag stencil">' + escapeHtml(CATEGORIES[state.current.catIdx].name) + ' — $' + (isDD ? state.current.wager : clue.value) + '</div>' +
+      (isDD ? '<div class="dd-banner stencil">DAILY DOUBLE</div>' : '') +
+      '<p class="clue-text">' + escapeHtml(clue.clue) + '</p>' +
+      '<button class="reveal-btn stencil" id="revealBtn">Reveal Answer</button>';
+    document.getElementById('revealBtn').addEventListener('click', renderClueBack);
+  }
+
+  function renderClueBack() {
+    var clue = currentClue();
+    var isDD = state.current.isDD;
+    var html =
+      '<div class="cat-tag stencil">' + escapeHtml(CATEGORIES[state.current.catIdx].name) + ' — $' + (isDD ? state.current.wager : clue.value) + '</div>' +
+      (isDD ? '<div class="dd-banner stencil">DAILY DOUBLE</div>' : '') +
+      '<p class="clue-text">' + escapeHtml(clue.clue) + '</p>' +
+      '<p class="answer-text">' + escapeHtml(clue.answer) + '</p>';
+
+    if (isDD) {
+      var team = state.teams[state.activeTeam];
+      html += '<div class="section-label">Did ' + escapeHtml(team.name) + ' answer correctly?</div>' +
+        '<div class="team-award-grid">' +
+        '<button class="award-btn" id="ddCorrect">✔ Correct — award $' + state.current.wager + '</button>' +
+        '<button class="award-btn wrong-variant" id="ddWrong">✘ Incorrect — deduct $' + state.current.wager + '</button>' +
+        '</div>';
+      modalBody.innerHTML = html;
+      document.getElementById('ddCorrect').addEventListener('click', function () { resolveDailyDouble(true); });
+      document.getElementById('ddWrong').addEventListener('click', function () { resolveDailyDouble(false); });
+    } else {
+      html += '<div class="section-label">Which team answered correctly first?</div>' +
+        '<div class="team-award-grid" id="awardGrid"></div>' +
+        '<button class="no-one-btn stencil" id="noOneBtn">No one answered correctly — move on</button>';
+      modalBody.innerHTML = html;
+      var grid = document.getElementById('awardGrid');
+      state.teams.forEach(function (team, idx) {
+        var b = document.createElement('button');
+        b.className = 'award-btn';
+        b.textContent = team.name + ' (+$' + clue.value + ')';
+        b.addEventListener('click', function () { resolveRegular(idx); });
+        grid.appendChild(b);
+      });
+      document.getElementById('noOneBtn').addEventListener('click', function () { resolveRegular(-1); });
+    }
+  }
+
+  function resolveRegular(winnerIdx) {
+    var clue = currentClue();
+    if (winnerIdx >= 0) {
+      state.teams[winnerIdx].score += clue.value;
+      state.activeTeam = winnerIdx;
+    } else {
+      state.activeTeam = (state.activeTeam + 1) % state.teams.length;
+    }
+    finishClue();
+  }
+
+  function resolveDailyDouble(correct) {
+    var team = state.teams[state.activeTeam];
+    if (correct) {
+      team.score += state.current.wager;
+    } else {
+      team.score -= state.current.wager;
+      state.activeTeam = (state.activeTeam + 1) % state.teams.length;
+    }
+    finishClue();
+  }
+
+  function finishClue() {
+    var clue = currentClue();
+    clue._done = true;
+    state.cluesDone++;
+    closeModal();
+    renderScoreboard();
+    renderBoard();
+    updateCluesMeta();
+    if (state.cluesDone >= state.cluesTotal) {
+      setTimeout(showFinal, 350);
+    }
+  }
+
+  function closeModal() {
+    modalWrap.classList.remove('open');
+    state.current = null;
+  }
+
+  modalWrap.addEventListener('click', function (e) {
+    if (e.target === modalWrap) {
+      // Prevent accidental close before answer is resolved on a revealed clue;
+      // only allow backdrop-close before reveal.
+      var revealBtn = document.getElementById('revealBtn');
+      var wagerConfirm = document.getElementById('wagerConfirm');
+      if (revealBtn || wagerConfirm) closeModal();
+    }
+  });
+
+  function showFinal() {
+    gameScreen.classList.add('hidden');
+    finalScreen.classList.remove('hidden');
+    var sorted = state.teams.slice().sort(function (a, b) { return b.score - a.score; });
+    var topScore = sorted.length ? sorted[0].score : 0;
+    var list = document.getElementById('finalList');
+    list.innerHTML = '';
+    sorted.forEach(function (team, idx) {
+      var li = document.createElement('li');
+      if (team.score === topScore) li.className = 'winner';
+      li.innerHTML = '<span><span class="rank stencil">#' + (idx + 1) + '</span>' + escapeHtml(team.name) + '</span>' +
+        '<span class="stencil">' + (team.score < 0 ? '-$' : '$') + Math.abs(team.score) + '</span>';
+      list.appendChild(li);
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+})();
+</script>
+</body>
+</html>
